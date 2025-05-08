@@ -16,6 +16,7 @@ export interface CloudWatchLogsService {
 
 export class CloudWatchLogsServiceImpl implements CloudWatchLogsService {
     private client: CloudWatchLogsClient;
+    private static readonly MAX_CSV_ROW_LENGTH = 100;
 
     constructor() {
         this.client = new CloudWatchLogsClient();
@@ -82,7 +83,15 @@ export class CloudWatchLogsServiceImpl implements CloudWatchLogsService {
         }
 
         const csvHeader = queryResults[0].map((field) => field.field).join(",");
-        const csvRows = queryResults.map((result) => result.map((field) => field.value).join(","));
+        const csvRows = queryResults
+            .map((result) => result.map((field) => field.value).join(","))
+            // Truncate long rows
+            .map((row) =>
+                row.length > CloudWatchLogsServiceImpl.MAX_CSV_ROW_LENGTH
+                    ? `${row.slice(0, CloudWatchLogsServiceImpl.MAX_CSV_ROW_LENGTH)}...`
+                    : row,
+            );
+
         return [csvHeader, ...csvRows].join("\n");
     }
 }
