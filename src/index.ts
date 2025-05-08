@@ -55,11 +55,13 @@ async function fetchLogs(
         const logData = await logService.queryLogGroupAsCsv(logGroupName, logStartTime, logEndTime, QUERY_STRING);
         if (logData.csvContent) {
             logContents.push(logData);
+        } else {
+            console.log(`No log data found for log group: ${logGroupName}`);
+            logContents.push({
+                logGroupName,
+                csvContent: `No log data found for log group: ${logGroupName}`,
+            });
         }
-    }
-
-    if (logContents.length === 0) {
-        throw new Error("No logs found for any log group.");
     }
 
     return logContents;
