@@ -15,6 +15,7 @@ const QUERY_STRING = `
     | filter level != "info"
     | filter level != "notice"
     | filter not isblank(msg)
+    | filter not isblank(level)
     | display @timestamp, msg, path
     | sort msg, path, @timestamp desc
 `;
