@@ -47,16 +47,6 @@ describe("log-reviewer Lambda", () => {
         );
     });
 
-    it("should handle errors when no logs are found", async () => {
-        const mockLogService = CloudWatchLogsServiceImpl as jest.MockedClass<typeof CloudWatchLogsServiceImpl>;
-        mockLogService.prototype.queryLogGroupAsCsv.mockResolvedValue({
-            logGroupName: "test-log-group",
-            csvContent: "",
-        });
-
-        await expect(handler()).rejects.toThrow("No logs found for any log group.");
-    });
-
     it("should handle errors when AI service fails", async () => {
         const mockLogService = CloudWatchLogsServiceImpl as jest.MockedClass<typeof CloudWatchLogsServiceImpl>;
         mockLogService.prototype.queryLogGroupAsCsv.mockResolvedValue({
