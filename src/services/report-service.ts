@@ -53,6 +53,6 @@ export class ReportServiceImpl implements ReportService {
 
     private async postCanvasLink(slackService: SlackClientImpl, canvasId: string): Promise<void> {
         const link = `${config.slackBaseUrl}/docs/${config.slackTeamId}/${canvasId}`;
-        await slackService.postMessage(config.slackChannelId, `ログレビューを作成しました。\n${link}`);
+        await slackService.postMessage(config.slackChannelId, `Log review has been created.\n${link}`);
     }
 }
