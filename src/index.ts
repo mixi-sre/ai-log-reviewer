@@ -122,7 +122,7 @@ The error message in the report **should** be shown exactly as it appears in the
 Also, be sure to report **all** error logs within the aggregation period.
 
 Then, by comparing with the logs from the period **7 days before ${formattedStartTime}** to **${formattedEndTime}**, report **all** error logs that can be judged as important.
-If there are no error logs that can be considered important, please report: **「異常なし」** (No issues detected).
+If there are no error logs that can be considered important, please report: **"No issues detected"**.
 
 Only report objective facts based on the data. Do not include guesses or suggestions for improvement.
 The report must be written in **Japanese**.
@@ -152,7 +152,7 @@ export const handler = async () => {
     const reportService = new ReportServiceImpl(secretsService);
 
     const formattedYMD = format(new Date(startTime * 1000), "yyyy/MM/dd", { timeZone });
-    const title = `ログレビュー (${formattedYMD}: ${config.environmentName})`;
+    const title = `Log Review (${formattedYMD}: ${config.environmentName})`;
 
     await reportService.execute(title, responseText);
     console.log("Log review completed successfully.");

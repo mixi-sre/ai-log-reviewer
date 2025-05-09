@@ -7,7 +7,7 @@ jest.mock("../src/services/log-service");
 jest.mock("../src/services/ai-service");
 jest.mock("../src/services/report-service");
 
-describe("log-reviewer Lambda", () => {
+describe("ai-log-reviewer Lambda", () => {
     beforeEach(() => {
         jest.clearAllMocks();
     });
@@ -42,7 +42,7 @@ describe("log-reviewer Lambda", () => {
 
         // Verify report service was called
         expect(mockReportService.prototype.execute).toHaveBeenCalledWith(
-            expect.stringContaining("ログレビュー"),
+            expect.stringContaining("Log Review"),
             "AI-generated report",
         );
     });
