@@ -23,8 +23,8 @@
     "@aws-sdk/client-bedrock-runtime": "^3.787.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.787.0",
     "@aws-sdk/client-secrets-manager": "^3.787.0",
+    "@date-fns/tz": "^1.2.0",
     "date-fns": "^4.1.0",
-    "date-fns-tz": "^3.2.0",
     "dotenv": "^16.5.0"
   },
   "license": "ISC"

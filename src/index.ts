@@ -1,6 +1,6 @@
 import type { ContentBlock } from "@aws-sdk/client-bedrock-runtime";
-import { getUnixTime, startOfDay, subDays } from "date-fns";
-import { format, toZonedTime } from "date-fns-tz";
+import { tz } from "@date-fns/tz";
+import { format, getUnixTime, startOfDay, subDays } from "date-fns";
 import { config } from "./config";
 import { BedrockServiceImpl } from "./services/ai-service";
 import { CloudWatchLogsServiceImpl } from "./services/log-service";
@@ -21,13 +21,12 @@ const QUERY_STRING = `
 `;
 
 /**
- * Calculate startTime, endTime, and logStartTime for JST using date-fns-tz.
+ * Calculate startTime, endTime, and logStartTime for JST.
  */
 function calculateTimeRanges() {
     const timeZone = config.timeZone;
     const now = new Date();
-    const jstNow = toZonedTime(now, timeZone);
-    const startOfTodayJST = startOfDay(jstNow);
+    const startOfTodayJST = startOfDay(now, { in: tz(timeZone) });
     const startOfYesterdayJST = subDays(startOfTodayJST, 1);
     const tenDaysAgoJST = subDays(startOfTodayJST, 10);
 
@@ -134,8 +133,8 @@ The report must be written in **Japanese**.
  */
 export const handler = async () => {
     const { startTime, endTime, logStartTime, logEndTime, timeZone } = calculateTimeRanges();
-    const formattedStartTime = format(new Date(startTime * 1000), "yyyy/MM/dd HH:mm:ss", { timeZone });
-    const formattedEndTime = format(new Date(endTime * 1000), "yyyy/MM/dd HH:mm:ss", { timeZone });
+    const formattedStartTime = format(new Date(startTime * 1000), "yyyy/MM/dd HH:mm:ss", { in: tz(timeZone) });
+    const formattedEndTime = format(new Date(endTime * 1000), "yyyy/MM/dd HH:mm:ss", { in: tz(timeZone) });
     console.log("Start Time:", formattedStartTime);
     console.log("End Time:", formattedEndTime);
 
@@ -151,7 +150,7 @@ export const handler = async () => {
     const secretsService = new SecretsServiceImpl();
     const reportService = new ReportServiceImpl(secretsService);
 
-    const formattedYMD = format(new Date(startTime * 1000), "yyyy/MM/dd", { timeZone });
+    const formattedYMD = format(new Date(startTime * 1000), "yyyy/MM/dd", { in: tz(timeZone) });
     const title = `Log Review (${formattedYMD}: ${config.environmentName})`;
 
     await reportService.execute(title, responseText);
