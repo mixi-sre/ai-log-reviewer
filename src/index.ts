@@ -21,20 +21,20 @@ const QUERY_STRING = `
 `;
 
 /**
- * Calculate startTime, endTime, and logStartTime for JST.
+ * Calculate startTime, endTime, and logStartTime.
  */
 function calculateTimeRanges() {
     const timeZone = config.timeZone;
     const now = new Date();
-    const startOfTodayJST = startOfDay(now, { in: tz(timeZone) });
-    const startOfYesterdayJST = subDays(startOfTodayJST, 1);
-    const tenDaysAgoJST = subDays(startOfTodayJST, 10);
+    const startOfToday = startOfDay(now, { in: tz(timeZone) });
+    const startOfYesterday = subDays(startOfToday, 1);
+    const tenDaysAgo = subDays(startOfToday, 10);
 
     return {
-        startTime: getUnixTime(startOfYesterdayJST),
-        endTime: getUnixTime(startOfTodayJST) - 1,
-        logStartTime: getUnixTime(tenDaysAgoJST),
-        logEndTime: getUnixTime(startOfTodayJST) - 1,
+        startTime: getUnixTime(startOfYesterday),
+        endTime: getUnixTime(startOfToday) - 1,
+        logStartTime: getUnixTime(tenDaysAgo),
+        logEndTime: getUnixTime(startOfToday) - 1,
         timeZone,
     };
 }
@@ -91,7 +91,7 @@ function prepareContent(logContents: LogContent[]): ContentBlock[] {
 /**
  * Prepare the instructions for the AI service.
  */
-function prepareInstructions(formattedStartTime: string, formattedEndTime: string): string {
+function prepareInstructions(timeZone: string, formattedStartTime: string, formattedEndTime: string): string {
     return `
 # Role
 You are a senior SRE engineer working in a team that develops web services.
@@ -108,6 +108,7 @@ Additionally, by comparing the logs from the period **7 days before ${formattedS
 - The error logs will be provided in CSV format.
 - The first column in the CSV contains the timestamp when the error was logged, the second column contains the error message, and the third column contains the request path where the error occurred.
 - The logs contain data from the past several days. All timestamps are in UTC.
+- Although the timestamps are in UTC, please perform all analysis, aggregation, and comparison in ${timeZone}.
 - The logs will be pre-sorted by the error message content.
 
 # About the Report Format
@@ -142,7 +143,7 @@ export const handler = async () => {
     const logContents = await fetchLogs(logService, logStartTime, logEndTime);
 
     const content = prepareContent(logContents);
-    const instructions = prepareInstructions(formattedStartTime, formattedEndTime);
+    const instructions = prepareInstructions(config.timeZone, formattedStartTime, formattedEndTime);
 
     const aiService = new BedrockServiceImpl();
     const responseText = await aiService.sendRequest(config.modelId, content, instructions);
