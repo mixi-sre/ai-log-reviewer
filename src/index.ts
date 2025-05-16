@@ -20,6 +20,8 @@ const QUERY_STRING = `
     | sort msg, path, @timestamp desc
 `;
 
+const NO_LOG_DATA_PREFIX = "No log data found for log group:";
+
 /**
  * Calculate startTime, endTime, and logStartTime.
  */
@@ -55,10 +57,10 @@ async function fetchLogs(
         if (logData.csvContent) {
             logContents.push(logData);
         } else {
-            console.log(`No log data found for log group: ${logGroupName}`);
+            console.log(`${NO_LOG_DATA_PREFIX} ${logGroupName}`);
             logContents.push({
                 logGroupName,
-                csvContent: `No log data found for log group: ${logGroupName}`,
+                csvContent: `${NO_LOG_DATA_PREFIX} ${logGroupName}`,
             });
         }
     }
@@ -77,7 +79,10 @@ function prepareContent(logContents: LogContent[]): ContentBlock[] {
      */
     const normalizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9\s\-\(\)\[\]]/g, "").replace(/\s+/g, " ");
 
-    const documents: ContentBlock.DocumentMember[] = logContents.map((log) => ({
+    // Exclude logs whose csvContent starts with the NO_LOG_DATA_PREFIX so that dummy data is not sent to the AI
+    const validLogs = logContents.filter((log) => !log.csvContent.trim().startsWith(NO_LOG_DATA_PREFIX));
+
+    const documents: ContentBlock.DocumentMember[] = validLogs.map((log) => ({
         document: {
             format: "csv",
             name: normalizeFileName(`${log.logGroupName}-logs`),
