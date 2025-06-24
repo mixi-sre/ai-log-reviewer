@@ -8,10 +8,10 @@
 
 ## Features
 
-- Aggregates and analyzes error logs from **CloudWatch Logs Insights**
-- Detects sudden increases or new types of errors by comparing with historical data
+- Aggregates error logs from **CloudWatch Logs Insights** by date and error content
+- Compares daily error trends with the previous 7 days to detect anomalies, new errors, and sudden increases
 - Generates daily reports using an **AI model (Anthropic Claude via AWS Bedrock)**
-- Posts formatted reports to **Slack**
+- Posts both raw aggregation results and AI-interpreted summaries to **Slack**
 - Securely manages Slack credentials via **AWS Secrets Manager**
 
 ## Architecture
@@ -86,21 +86,38 @@ Once deployed, `ai-log-reviewer` will automatically run on a schedule (e.g., dai
 
 ## Log Input Format
 
-- **Format**: CSV
+- **Format**: CSV (pre-aggregated)
 - **Columns**:
-  1. Timestamp when the error log was generated (UTC)
-  2. Error log message
-  3. Request path that generated the error log
-- **Sort Order**: Logs should be pre-sorted by error message
+  1. `date`: Date of the error (yyyy-mm-dd)
+  2. `cnt`: Number of occurrences
+  3. `msg`: Error message
+  4. `path`: Request path where the error occurred
+
+**Example:**
+```
+date,cnt,msg,path
+2025-06-23,12,TypeError: Cannot read property 'foo' of undefined,/api/v1/resource
+2025-06-23,3,Error: Request failed with status code 500,/api/v1/login
+2025-06-22,1,Error: Database connection timeout,/api/v1/resource
+...
+```
 
 ## Report Format
 
 - **Format**: Markdown
 - **Contents**:
   1. The time range covered by the report
-  2. Aggregated results by error log message (including the message and occurrence count)
-  3. Error logs identified as important compared to previous logs
-  4. If there are no important error logs, state "No issues detected."
+  2. Aggregated results by error log message (CSV for the analyzed day)
+  3. AI interpretation:
+     - Critical anomalies (errors requiring immediate attention)
+     - New errors (not seen in the previous 7 days)
+     - Sudden increase in frequency (errors whose count increased significantly)
+  4. If there are no important error logs, the report states "No issues detected."
+
+**Example AI interpretation block:**
+- New error: Error: Database connection timeout (/api/v1/resource): 1 occurrence (not seen in previous 7 days)
+- Sudden increase: TypeError: Cannot read property 'foo' of undefined (/api/v1/resource): 12 occurrences (previous 7-day average: 2)
+- Critical anomalies: None
 
 ## Notes
 
