@@ -8,18 +8,30 @@ import { ReportServiceImpl } from "./services/report-service";
 import { SecretsServiceImpl } from "./services/secrets-service";
 import type { LogContent } from "./types";
 
-// Define the query string for CloudWatch Logs Insights
-const QUERY_STRING = `
-    fields coalesce(content.event, content.processor_error_code, content, content.message, content.error) as msg,
-    concat(content.method, content.request_path) as path
-    | filter level != "info"
-    | filter level != "notice"
-    | filter not isblank(msg)
-    | filter not isblank(level)
-    | display @timestamp, msg, path
-    | sort msg, path, @timestamp desc
-`;
+// Define the query string for CloudWatch Logs Insights (aggregation by date)
+function getQueryString(timeZone: string): string {
+    // calculate the offset in milliseconds
+    const now = new Date();
+    const utcDate = now;
+    const localDate = new Date(`${format(now, "yyyy-MM-dd'T'HH:mm:ss.SSS", { in: tz(timeZone) })}Z`);
+    const offsetMs = localDate.getTime() - utcDate.getTime();
+    console.log(`Time zone: ${timeZone}, Offset in milliseconds: ${offsetMs}`);
 
+    return `
+        fields coalesce(content.event, content.processor_error_code, content, content.message, content.error) as msg,
+        concat(content.method, content.request_path) as path,
+        datefloor(@timestamp + ${offsetMs}, 1d) as date
+        | filter level != "info"
+        | filter level != "notice"
+        | filter not isblank(msg)
+        | filter not isblank(level)
+        | stats count() as cnt by date, msg, path
+        | display date, cnt, msg, path
+        | sort date desc, cnt desc
+    `;
+}
+
+const QUERY_STRING = getQueryString(config.timeZone);
 const NO_LOG_DATA_PREFIX = "No log data found for log group:";
 
 /**
@@ -96,7 +108,7 @@ function prepareContent(logContents: LogContent[]): ContentBlock[] {
 /**
  * Prepare the instructions for the AI service.
  */
-function prepareInstructions(timeZone: string, formattedStartTime: string, formattedEndTime: string): string {
+function prepareInstructions(yesterday: string, sevenDaysAgo: string): string {
     return `
 # Role
 You are a senior SRE engineer working in a team that develops web services.
@@ -105,33 +117,27 @@ One of your responsibilities is to review error logs on a daily basis to detect 
 Some error logs are output regularly and do not indicate major issues.
 Therefore, you need to understand the historical trends of the error logs, assess the severity of each error, and report your findings to the application engineers.
 
-# Rules
-Please aggregate *all* error logs from **${formattedStartTime}** to **${formattedEndTime}** by their content and report the number of occurrences for each.
-Additionally, by comparing the logs from the period **7 days before ${formattedStartTime}** to **${formattedEndTime}**, if you find any error logs that have rapidly increased or any unfamiliar error messages, please include them in your report as well.
-
 # About the Input Error Logs
-- The error logs will be provided in CSV format.
-- The first column in the CSV contains the timestamp when the error was logged, the second column contains the error message, and the third column contains the request path where the error occurred.
-- The logs contain data from the past several days. All timestamps are in UTC.
-- Although the timestamps are in UTC, please perform all analysis, aggregation, and comparison in ${timeZone}.
-- The logs will be pre-sorted by the error message content.
+The provided CSV data includes the following pre-aggregated information:
+1. date: The date on which the error occurred
+2. cnt: The number of occurrences of the error
+3. msg: The error message
+4. path: The request path where the error occurred
+
+# Rules
+- The report must be written in **Japanese** and in **Markdown format**.
+- Only objective facts based on the data should be reported. Do not include any speculation or suggestions for improvement.
 
 # About the Report Format
-Please write the report in **Markdown format**.
+First, specify the time period being analyzed.
 
-First, report the time range being analyzed.
+Then, for the error logs on ${yesterday}, compare them with the logs from the period ${sevenDaysAgo} to ${yesterday}, and report the following:
+1. Critical anomalies: Critical anomalies that require immediate attention
+2. New errors: New error patterns not previously observed
+3. Sudden increase in frequency: Errors whose frequency has significantly increased
 
-Next, for **all** error logs from **${formattedStartTime}** to **${formattedEndTime}**, report the aggregated results grouped by error content.
-The aggregated results **must** include the error message and the number of log entries with that same message.
-The error message in the report **should** be shown exactly as it appears in the input.
-Also, be sure to report **all** error logs within the aggregation period.
-
-Then, by comparing with the logs from the period **7 days before ${formattedStartTime}** to **${formattedEndTime}**, report **all** error logs that can be judged as important.
-If there are no error logs that can be considered important, please report: **"No issues detected"**.
-
-Only report objective facts based on the data. Do not include guesses or suggestions for improvement.
-The report must be written in **Japanese**.
-    `;
+If there are no error logs that can be judged as important, report: **"No issues detected"**.
+`;
 }
 
 /**
@@ -145,10 +151,28 @@ export const handler = async () => {
     console.log("End Time:", formattedEndTime);
 
     const logService = new CloudWatchLogsServiceImpl();
+
+    // Fetch 7 days of logs for AI analysis
     const logContents = await fetchLogs(logService, logStartTime, logEndTime);
 
+    // Fetch yesterday's logs only for display
+    const yesterdayLogContents = await fetchLogs(logService, startTime, endTime);
+
+    // Prepare raw aggregated data (yesterday only)
+    let rawDataContent = "# Log aggregation results\n\n";
+    for (const logContent of yesterdayLogContents) {
+        if (!logContent.csvContent.startsWith(NO_LOG_DATA_PREFIX)) {
+            rawDataContent += `## ${logContent.logGroupName}\n\n\`\`\`\n${logContent.csvContent}\n\`\`\`\n\n`;
+        } else {
+            rawDataContent += `## ${logContent.logGroupName}\n\n${logContent.csvContent}\n\n`;
+        }
+    }
+
+    // Process with AI (using 10 days of data)
     const content = prepareContent(logContents);
-    const instructions = prepareInstructions(config.timeZone, formattedStartTime, formattedEndTime);
+    const yesterday = format(new Date(startTime * 1000), "yyyy/MM/dd", { in: tz(timeZone) });
+    const sevenDaysAgo = format(new Date(logStartTime * 1000), "yyyy/MM/dd", { in: tz(timeZone) });
+    const instructions = prepareInstructions(yesterday, sevenDaysAgo);
 
     const aiService = new BedrockServiceImpl();
     const responseText = await aiService.sendRequest(config.modelId, content, instructions);
@@ -157,8 +181,11 @@ export const handler = async () => {
     const reportService = new ReportServiceImpl(secretsService);
 
     const formattedYMD = format(new Date(startTime * 1000), "yyyy/MM/dd", { in: tz(timeZone) });
+
+    // Combine raw data and AI interpretation into one canvas
+    const combinedContent = `${rawDataContent}---\n\n# AI interpretation results\n${responseText}`;
     const title = `Log Review (${formattedYMD}: ${config.environmentName})`;
 
-    await reportService.execute(title, responseText);
+    await reportService.execute(title, combinedContent);
     console.log("Log review completed successfully.");
 };
