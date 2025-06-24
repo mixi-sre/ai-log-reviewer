@@ -89,7 +89,7 @@ function prepareContent(logContents: LogContent[]): ContentBlock[] {
      * - Removes any characters that are not alphanumeric, whitespace, hyphens, parentheses, or square brackets.
      * - Replaces multiple consecutive whitespace characters with a single space.
      */
-    const normalizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9\s\-\(\)\[\]]/g, "").replace(/\s+/g, " ");
+    const normalizeFileName = (name: string) => name.replace(/[^a-zA-Z0-9\s\-()[\]]/g, "").replace(/\s+/g, " ");
 
     // Exclude logs whose csvContent starts with the NO_LOG_DATA_PREFIX so that dummy data is not sent to the AI
     const validLogs = logContents.filter((log) => !log.csvContent.trim().startsWith(NO_LOG_DATA_PREFIX));
