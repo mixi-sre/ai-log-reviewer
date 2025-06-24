@@ -84,7 +84,18 @@ export class CloudWatchLogsServiceImpl implements CloudWatchLogsService {
 
         const csvHeader = queryResults[0].map((field) => field.field).join(",");
         const csvRows = queryResults
-            .map((result) => result.map((field) => field.value).join(","))
+            .map((result) =>
+                result
+                    .map((field, index) => {
+                        // If the first column (index 0) is a date, convert it to yyyy-mm-dd format
+                        if (index === 0 && field.value) {
+                            const dateOnly = field.value.split(" ")[0];
+                            return dateOnly;
+                        }
+                        return field.value;
+                    })
+                    .join(","),
+            )
             // Truncate long rows
             .map((row) =>
                 row.length > CloudWatchLogsServiceImpl.MAX_CSV_ROW_LENGTH
