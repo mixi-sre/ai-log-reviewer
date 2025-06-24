@@ -17,9 +17,6 @@ export class SlackClientImpl implements SlackClient {
     sanitizeMarkdown(markdown: string): string {
         let sanitizedMarkdown = markdown; // Use a local variable
 
-        // Remove code fences (```...```)
-        sanitizedMarkdown = sanitizedMarkdown.replace(/```[\s\S]*?```/g, "");
-
         // Flatten nested lists (e.g., bullet lists within numbered lists)
         sanitizedMarkdown = sanitizedMarkdown.replace(/(\d+\.\s.*\n)(\s+-\s.*\n)+/g, (match) => {
             return match
