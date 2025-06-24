@@ -30,12 +30,12 @@ function calculateTimeRanges() {
     const now = new Date();
     const startOfToday = startOfDay(now, { in: tz(timeZone) });
     const startOfYesterday = subDays(startOfToday, 1);
-    const tenDaysAgo = subDays(startOfToday, 10);
+    const sevenDaysAgo = subDays(startOfToday, 7);
 
     return {
         startTime: getUnixTime(startOfYesterday),
         endTime: getUnixTime(startOfToday) - 1,
-        logStartTime: getUnixTime(tenDaysAgo),
+        logStartTime: getUnixTime(sevenDaysAgo),
         logEndTime: getUnixTime(startOfToday) - 1,
         timeZone,
     };
