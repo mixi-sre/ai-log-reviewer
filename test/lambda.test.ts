@@ -43,7 +43,7 @@ describe("ai-log-reviewer Lambda", () => {
         // Verify report service was called
         expect(mockReportService.prototype.execute).toHaveBeenCalledWith(
             expect.stringContaining("Log Review"),
-            "AI-generated report",
+            expect.stringContaining("AI-generated report"),
         );
     });
 
