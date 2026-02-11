@@ -20,9 +20,9 @@
   },
   "dependencies": {
     "@slack/bolt": "^4.4.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.835.0",
-    "@aws-sdk/client-cloudwatch-logs": "^3.835.0",
-    "@aws-sdk/client-secrets-manager": "^3.835.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.987.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.987.0",
+    "@aws-sdk/client-secrets-manager": "^3.987.0",
     "@date-fns/tz": "^1.2.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0"
